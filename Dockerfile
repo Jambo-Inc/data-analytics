@@ -5,6 +5,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
+RUN cp .streamlit/secrets.toml.example .streamlit/secrets.toml
 
 ENV PORT=8501
 EXPOSE 8501
