@@ -83,7 +83,7 @@ def conversations_main():
             on_change=handle_convo_select
         )
         st.button(
-            "Start new conversation with agent",
+            "新しいチャット",
             on_click=handle_create_convo,
             disabled=len(state.agents) == 0
         )
