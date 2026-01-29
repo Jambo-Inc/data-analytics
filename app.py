@@ -43,7 +43,7 @@ def main():
         """
         <div class="app-title">
             <span class="icon">📊</span>
-            <h1>分析くん</h1>
+            <h1>分析くん(仮)</h1>
             <p>Data Analytics Assistant</p>
             <hr>
         </div>
