@@ -22,7 +22,6 @@ system_preamble: |
   - ORDER BYは必ず指定
 
 tables:
-  # descriptionが長い場合はtables/〇〇.mdに書き出す
   - project_id: "jambo-data-science"
     dataset_id: "curated_prod"
     table_id: "transaction_log"
@@ -30,10 +29,17 @@ tables:
   - project_id: "jambo-data-science"
     dataset_id: "curated_prod"
     table_id: "log_point"
-    # description は contexts/tables/log_point.md から自動読み込み
+    description: "ポイント付与・消費ログテーブル"
   - project_id: "jambo-data-science"
     dataset_id: "curated_prod"
     table_id: "user"
+    description: |
+      ユーザー情報テーブル
+
+      ## カラム変換ルール
+      ### gender
+      - 0 : 男性
+      - 1 : 女性
 
 relationships:
   - "user.user_id = log_point.user_id"

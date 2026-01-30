@@ -5,7 +5,6 @@ from typing import List, Dict, Optional
 from dataclasses import dataclass
 
 CONTEXTS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "contexts")
-TABLES_DIR = os.path.join(CONTEXTS_DIR, "tables")
 
 
 @dataclass
@@ -33,15 +32,6 @@ def list_templates() -> List[str]:
     return [f for f in os.listdir(CONTEXTS_DIR) if f.endswith('.yaml')]
 
 
-def _load_table_description(table_id: str) -> str:
-    """テーブル説明を外部ファイルから読み込む（contexts/tables/{table_id}.md）"""
-    filepath = os.path.join(TABLES_DIR, f"{table_id}.md")
-    if os.path.exists(filepath):
-        with open(filepath, 'r', encoding='utf-8') as f:
-            return f.read().strip()
-    return ""
-
-
 def load_template(filename: str) -> Optional[TemplateConfig]:
     """YAMLテンプレートを読み込み"""
     filepath = os.path.join(CONTEXTS_DIR, filename)
@@ -53,14 +43,11 @@ def load_template(filename: str) -> Optional[TemplateConfig]:
 
         tables = []
         for t in data.get('tables', []):
-            table_id = t.get('table_id', '')
-            # 優先順位: YAML内のdescription > 外部ファイル（contexts/tables/{table_id}.md）
-            description = t.get('description', '') or _load_table_description(table_id)
             tables.append(TableConfig(
                 project_id=t.get('project_id', ''),
                 dataset_id=t.get('dataset_id', ''),
-                table_id=table_id,
-                description=description
+                table_id=t.get('table_id', ''),
+                description=t.get('description', '')
             ))
 
         # system_preambleにテーブル説明を自動追加
