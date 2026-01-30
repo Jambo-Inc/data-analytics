@@ -96,6 +96,13 @@ def conversations_main():
         st.warning("Please create an agent first before chatting")
         st.stop()
 
+    # サイドバーの新規チャットボタンからの遷移を処理
+    if state.get("start_new_chat"):
+        state.start_new_chat = False  # フラグをリセット
+        # エージェントが選択されている場合のみ新規チャットを作成
+        if state.current_agent:
+            handle_create_convo()
+
     # ========================================
     # エージェント・会話選択バー
     # ========================================
