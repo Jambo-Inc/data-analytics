@@ -17,21 +17,23 @@ system_preamble: |
   - ORDER BYは必ず指定
 
 tables:
+  # descriptionが長い場合はtables/〇〇.mdに書き出す
   - project_id: "jambo-data-science"
     dataset_id: "curated_prod"
     table_id: "transaction_log"
-    description: ""
+    description: "アプリ内購入ログ"
   - project_id: "jambo-data-science"
     dataset_id: "curated_prod"
     table_id: "log_point"
-    description: "ポイント付与・消費ログ"
+    # description は contexts/tables/log_point.md から自動読み込み
   - project_id: "jambo-data-science"
     dataset_id: "curated_prod"
     table_id: "user"
-    description: "ユーザー情報"
 
 relationships:
   - "user.user_id = log_point.user_id"
+  - "user.user_id = transaction_log.user_id"
+  - "user.user_id = log_web_payment_point.user_id"
 
 #
 #example_queries:
