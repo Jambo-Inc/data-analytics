@@ -21,6 +21,11 @@ system_preamble: |
   - LIMIT句は必ず付与（デフォルト1000）
   - ORDER BYは必ず指定
 
+  ## カラム型に関する注意
+  - `timestamp_jst`カラムはDATETIME型である（TIMESTAMPではない）
+  - DATETIME型にDATE関数を使う場合は引数1つのみ: `DATE(timestamp_jst)` ✓
+  - タイムゾーン引数を付けてはいけない: `DATE(timestamp_jst, 'Asia/Tokyo')` ✗ ← エラーになる
+
 tables:
   - project_id: "jambo-data-science"
     dataset_id: "curated_prod"
