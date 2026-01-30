@@ -19,13 +19,71 @@ import streamlit as st
 MAX_DISPLAY_ROWS = 20
 
 
+def format_user_data_text(text: str) -> str:
+    """
+    ユーザーデータを含むテキストを見やすく整形する
+
+    user_id:で始まる複数ユーザーの情報を改行で区切り、
+    各種類の回数を箇条書き形式に整形する
+    """
+    # user_id: パターンで分割（最初の空マッチを除去）
+    user_pattern = r'(user_id:\s*[a-f0-9]+)'
+    parts = re.split(user_pattern, text)
+
+    # user_id:パターンが見つからない場合はそのまま返す
+    if len(parts) <= 1:
+        return text
+
+    formatted_lines = []
+    i = 0
+    # 最初の部分（user_id:より前のテキスト）
+    if parts[0].strip():
+        formatted_lines.append(parts[0].strip())
+        formatted_lines.append("")
+    i = 1
+
+    while i < len(parts):
+        if i + 1 < len(parts):
+            user_id = parts[i].strip()
+            data = parts[i + 1].strip()
+
+            # 回数データを「:」と「回」で分割して箇条書きに
+            # パターン: "種類名: N回" を検出
+            items = re.findall(r'([^:]+?):\s*(\d+)回', data)
+
+            if items:
+                formatted_lines.append(f"**{user_id}**")
+                for item_name, count in items:
+                    item_name = item_name.strip()
+                    if item_name:
+                        formatted_lines.append(f"  - {item_name}: {count}回")
+                formatted_lines.append("")
+            else:
+                # パターンにマッチしない場合はそのまま
+                formatted_lines.append(f"**{user_id}** {data}")
+                formatted_lines.append("")
+            i += 2
+        else:
+            formatted_lines.append(parts[i])
+            i += 1
+
+    return "\n".join(formatted_lines)
+
+
 def handle_text_response(resp):
     """
     テキストレスポンスを表示する
     複数のパーツがある場合は結合してMarkdownで表示
+    ユーザーデータを含む場合は見やすく整形する
     """
     parts = getattr(resp, 'parts')
-    st.markdown(''.join(parts))
+    text = ''.join(parts)
+
+    # user_id:を含む場合は整形
+    if 'user_id:' in text:
+        text = format_user_data_text(text)
+
+    st.markdown(text)
 
 
 def display_schema(data):
