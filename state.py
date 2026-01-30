@@ -2,9 +2,16 @@
 グローバル状態管理モジュール
 st.session_stateを使用してAPIクライアント、エージェント、会話、メッセージを管理する
 """
+import uuid
 import streamlit as st
 from google.cloud import geminidataanalytics
 from google.api_core import exceptions as google_exceptions
+from utils.templates import load_template
+
+# 固定エージェント用のテンプレートファイル名
+DEFAULT_TEMPLATE = "jambo_default.yaml"
+# 固定エージェントの表示名
+DEFAULT_AGENT_NAME = "分析くん"
 
 def init_state():
     """
@@ -12,8 +19,8 @@ def init_state():
 
     処理内容:
     1. APIクライアント（DataAgentServiceClient, DataChatServiceClient）を作成
-    2. 既存のエージェント一覧を取得
-    3. 最新のエージェントを選択し、その会話一覧を取得
+    2. 既存のエージェントを取得、なければテンプレートから自動作成
+    3. 固定エージェントの会話一覧を取得
     4. 最新の会話を選択し、そのメッセージ一覧を取得
     """
     state = st.session_state
@@ -27,9 +34,13 @@ def init_state():
 
     fetch_agents_state(rerun=False)
 
-    state.current_agent = None
-    if state.agents:
-        state.current_agent = state.agents[-1]
+    # エージェントがなければテンプレートから自動作成
+    if not state.agents:
+        _create_default_agent()
+        fetch_agents_state(rerun=False)
+
+    # 固定エージェントを設定
+    state.current_agent = state.agents[0] if state.agents else None
 
     if state.current_agent:
         fetch_convos_state(agent=state.current_agent, rerun=False)
@@ -44,6 +55,59 @@ def init_state():
     # 初期化完了フラグを設定し、画面を再描画
     state.initialized = True
     st.rerun()
+
+
+def _create_default_agent():
+    """
+    デフォルトテンプレートからエージェントを自動作成する
+    """
+    state = st.session_state
+    template = load_template(DEFAULT_TEMPLATE)
+    if not template:
+        st.error(f"テンプレート {DEFAULT_TEMPLATE} が見つかりません")
+        return
+
+    project_id = st.secrets.cloud.project_id
+
+    # エージェントオブジェクトを作成
+    agent = geminidataanalytics.DataAgent()
+    agent_id = f"a{uuid.uuid4()}"
+    agent.name = f"projects/{project_id}/locations/global/dataAgents/{agent_id}"
+    agent.display_name = DEFAULT_AGENT_NAME
+    agent.description = template.description
+
+    # コンテキスト（データソースとシステム指示）を設定
+    published_context = geminidataanalytics.Context()
+    datasource_references = geminidataanalytics.DatasourceReferences()
+
+    # BigQueryテーブルへの参照を作成
+    table_references = []
+    for t in template.tables:
+        bigquery_table_reference = geminidataanalytics.BigQueryTableReference()
+        bigquery_table_reference.project_id = t.project_id
+        bigquery_table_reference.dataset_id = t.dataset_id
+        bigquery_table_reference.table_id = t.table_id
+        table_references.append(bigquery_table_reference)
+
+    datasource_references.bq.table_references = table_references
+    published_context.datasource_references = datasource_references
+    published_context.system_instruction = template.system_preamble
+
+    agent.data_analytics_agent.published_context = published_context
+
+    # APIにエージェント作成リクエストを送信
+    request = geminidataanalytics.CreateDataAgentRequest(
+        parent=f"projects/{project_id}/locations/global",
+        data_agent_id=agent_id,
+        data_agent=agent
+    )
+
+    try:
+        state.agent_client.create_data_agent(request=request)
+    except google_exceptions.GoogleAPICallError as e:
+        st.error(f"エージェント自動作成エラー: {e}")
+    except Exception as e:
+        st.error(f"予期しないエラー: {e}")
 
 
 def fetch_agents_state(rerun=True):

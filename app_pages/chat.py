@@ -4,11 +4,10 @@
 """
 import streamlit as st
 from google.cloud import geminidataanalytics
-from state import create_convo, fetch_convos_state, fetch_messages_state
+from state import create_convo, fetch_messages_state
 from utils.chat import show_message
 
 # セッション状態のキー定義
-AGENT_SELECT_KEY = "agent_selectbox_value"  # エージェント選択用
 CONVO_SELECT_KEY = "agent_convo_value"      # 会話選択用
 
 
@@ -39,24 +38,6 @@ def build_guardrail_message(original_message: str, agent) -> str:
 {original_message}"""
 
 
-def handle_agent_select():
-    """
-    エージェント選択時のコールバック
-    選択されたエージェントを設定し、そのエージェントの会話一覧を取得する
-    """
-    state = st.session_state
-    state.current_agent = state[AGENT_SELECT_KEY]
-    state.current_convo = None
-    state.convo_messages = []
-    st.spinner("Fetching past conversations")
-    fetch_convos_state(state.current_agent, False)
-    # 会話がある場合は最新の会話を選択し、メッセージを取得
-    if len(state.convos) > 0:
-        st.spinner("Fetching last conversation's messages")
-        state.current_convo = state.convos[0]
-        fetch_messages_state(state.current_convo, False)
-
-
 def handle_convo_select():
     """
     会話選択時のコールバック
@@ -85,99 +66,24 @@ def conversations_main():
     チャット画面のメイン関数
 
     機能:
-    1. エージェント・会話の選択ドロップダウン
-    2. チャット履歴の表示
-    3. ユーザー入力の受付とAIレスポンスの表示
+    1. チャット履歴の表示
+    2. ユーザー入力の受付とAIレスポンスの表示
     """
     state = st.session_state
 
     # エージェントが存在しない場合は警告を表示して終了
-    if len(state.agents) == 0:
-        st.warning("Please create an agent first before chatting")
+    if not state.current_agent:
+        st.warning("エージェントの初期化中にエラーが発生しました")
         st.stop()
 
     # サイドバーの新規チャットボタンからの遷移を処理
     if state.get("start_new_chat"):
         state.start_new_chat = False  # フラグをリセット
-        # エージェントが選択されている場合のみ新規チャットを作成
-        if state.current_agent:
-            handle_create_convo()
-
-    # ========================================
-    # エージェント・会話選択バー
-    # ========================================
-    with st.container(
-        border=True,
-        horizontal=True,
-        horizontal_alignment="distribute"
-    ):
-        def get_agent_display_name(a):
-            """エージェントの表示名を取得（なければリソース名からIDを抽出）"""
-            return getattr(a, 'display_name', None) or a.name.split('/')[-1]
-
-        # エージェントを表示名でソート
-        sorted_agents = sorted(state.agents, key=get_agent_display_name)
-
-        # 現在選択中のエージェントのインデックスを取得
-        agent_index = None
-        if state.current_agent:
-            for index, agent in enumerate(sorted_agents):
-                if state.current_agent.name == agent.name:
-                    agent_index = index
-            # エージェントが見つからない場合は選択をクリア
-            if agent_index is None:
-                state.current_agent = None
-                state.current_convo = None
-                state.convo_messages = []
-
-        # エージェント選択ドロップダウン
-        st.selectbox(
-            "Select agent to chat with:",
-            sorted_agents,
-            index=agent_index,
-            key=AGENT_SELECT_KEY,
-            format_func=get_agent_display_name,
-            on_change=handle_agent_select
-        )
-
-        # 現在選択中の会話のインデックスを取得
-        convo_index = None
-        if state.current_convo:
-            for index, convo in enumerate(state.convos):
-                if state.current_convo.name == convo.name:
-                    convo_index = index
-
-        # 会話選択ドロップダウン（最終使用日時でソート済み）
-        st.selectbox(
-            "Select previous conversation with agent (by last used):",
-            state.convos,
-            index=convo_index,
-            key=CONVO_SELECT_KEY,
-            format_func=lambda c: c.last_used_time.strftime("%m/%d/%Y, %H:%M:%S"),
-            on_change=handle_convo_select
-        )
-        # 新規会話作成ボタン
-        st.button(
-            "新しいチャット",
-            on_click=handle_create_convo,
-            disabled=len(state.agents) == 0
-        )
+        handle_create_convo()
 
     # ========================================
     # チャット表示エリア
     # ========================================
-    # サブヘッダーに会話の開始日時を表示
-    subheader_string = "Chat"
-    if state.current_convo:
-        subheader_string = f'Chat - Conversation started at {state.current_convo.create_time.strftime("%m/%d/%Y, %H:%M:%S")}'
-
-    st.subheader(subheader_string)
-
-    # エージェントが選択されていない場合は警告を表示
-    if state.current_agent is None:
-        st.warning("Please select an agent above to chat with")
-        st.stop()
-
     # チャット履歴を表示（ユーザーメッセージとアシスタントメッセージを区別）
     for message in state.convo_messages:
         if "system_message" in message:
@@ -194,7 +100,7 @@ def conversations_main():
 
     if user_input:
         # 会話がない場合は新規作成
-        if len(state.convos) == 0:
+        if not state.current_convo:
             handle_create_convo()
 
         # ユーザーメッセージを履歴に追加して表示
@@ -248,5 +154,3 @@ def is_looker_agent(agent) -> bool:
     return "looker" in datasource_references
 
 
-# ページを実行
-conversations_main()

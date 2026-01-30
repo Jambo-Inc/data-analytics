@@ -6,8 +6,13 @@ system_preamble: |
   - タイムゾーンは全てJST（Asia/Tokyo）で処理・表示すること
   - 日付フィルタは必ずTIMESTAMP型でJSTに変換して比較すること
 
+  ## 表示ルール
+  - ユーザー情報を表示する際は必ず user_id, name, application_id（アプリ名に変換）を含める
+    - もし、application_idの変換後の値が設定されていない場合は、そのままapplication_idを返す
+
   ## テーブル固有の制約
   - 期間指定がない場合は「期間を指定してください」とガイド
+    - 「昨日」は前日1日分
 
   ## 用語定義
   - 「上位」= 降順（DESC）
