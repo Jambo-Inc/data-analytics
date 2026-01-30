@@ -41,7 +41,17 @@ tables:
   - project_id: "jambo-data-science"
     dataset_id: "curated_prod"
     table_id: "transaction_log"
-    description: "アプリ内購入ログ"
+    description: |
+      "アプリ内購入ログ"
+      price: 課金額
+      point: 付与ポイント
+  - project_id: "jambo-data-science"
+    dataset_id: "curated_prod"
+    table_id: "log_web_payment_point"
+    description: |
+      "アプリ外購入ログ"
+      price: 課金額
+      point: 付与ポイント
   - project_id: "jambo-data-science"
     dataset_id: "curated_prod"
     table_id: "log_point"
