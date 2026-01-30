@@ -7,7 +7,7 @@ system_preamble: |
   - 日付フィルタは必ずTIMESTAMP型でJSTに変換して比較すること
 
   ## 表示ルール
-  - ユーザー情報を表示する際は必ず user_id, name, application_id（アプリ名に変換）を含める
+  - ユーザー情報を表示する際は必ず user_id, name, application_idを含める
     - もし、application_idの変換後の値が設定されていない場合は、そのままapplication_idを返す
 
   ## テーブル固有の制約
@@ -34,7 +34,36 @@ tables:
   - project_id: "jambo-data-science"
     dataset_id: "curated_prod"
     table_id: "log_point"
-    description: "ポイント付与・消費ログテーブル"
+    description: |
+      "ポイント獲得・消費ログテーブル"
+      user_id: ポイントを獲得・消費したユーザーのuser_id
+      partner_id: user_idとのやりとりによってポイントを獲得・消費したユーザーのuser_id
+      type: やりとり(partner_idあり)やアクション(partner_id)の種類
+        - 1: 登録
+        - 2: デイリーボーナス
+        - 4: 課金（購入）
+        - 15: 音声通話
+        - 16: ビデオ通話
+        - 17: チャット送信
+        - 20: 画像閲覧
+        - 21: 画像閲覧ボーナス
+        - 23: スタンプ送信
+        - 24: スタンプ受信
+        - 37: チャット受信
+        - 75: 動画視聴
+        - 76: 動画視聴ボーナス
+        - 82: 合算
+        - 84: デイリーボーナス2倍
+        - 104: （初回アプリ）ビデオLovenseメニュー支払い
+        - 105: （初回アプリ）ビデオLovenseメニュー付与
+        - 209: （2nd）音声ポイント付与
+        - 210: ライブ配信ポイント消費（ライブチャット）
+        - 211: ライブ配信ポイント付与（ライブチャット）
+        - 212: ライブビデオポイント付与
+        - 213: ライブビデオポイント消費
+        - 281: ウィークリーチャレンジボーナス
+        - 334: （男性）ビデオ通話 復元
+        - 上記以外のタイプ: その他
   - project_id: "jambo-data-science"
     dataset_id: "curated_prod"
     table_id: "user"
