@@ -7,11 +7,16 @@ from google.api_core import exceptions as google_exceptions
 from google.cloud import geminidataanalytics
 from state import fetch_agents_state
 from utils.agents import get_time_delta_string
+from utils.templates import list_templates, load_template
 import uuid
 
 # データソースの種類を定義
 BIG_QUERY = "BigQuery"
 LOOKER = "Looker"
+
+# セッションキー定義
+TABLES_KEY = "agent_tables_list"
+PREAMBLE_KEY = "template_preamble"
 
 
 def agents_main():
@@ -26,7 +31,7 @@ def agents_main():
 
     # ヘッダー部分：タイトルと更新ボタン
     with st.container(horizontal=True, horizontal_alignment="distribute"):
-        st.subheader("Data agents available")
+        st.subheader("エージェント一覧")
         if st.button("Refresh agents"):
             with st.spinner("Refreshing..."):
                 fetch_agents_state()
@@ -118,20 +123,103 @@ def agents_main():
         with col1:
             display_name = st.text_input("Agent display name:")
             description = st.text_area("Agent description:", height=70)
-            system_instruction = st.text_area("Agent system instruction:", height=140)
+            # テンプレートからの値があれば使用
+            default_instruction = st.session_state.get(PREAMBLE_KEY, "")
+            system_instruction = st.text_area(
+                "Agent system instruction:",
+                value=default_instruction,
+                height=140,
+                key="system_instruction_input"
+            )
         # 右カラム：データソース設定
         with col2:
             # データソースの種類を選択（BigQuery or Looker）
             data_source = st.radio(
-                "Data source:",
+                "データソース",
                 [BIG_QUERY, LOOKER],
                 horizontal=True
             )
             # 選択されたデータソースに応じて入力フィールドを切り替え
             if data_source == BIG_QUERY:
-                bq_project_id = st.text_input("BigQuery project ID:", placeholder="bigquery-public-data")
-                bq_dataset_id = st.text_input("BigQuery dataset ID:", placeholder="san_francisco_trees")
-                bq_table_id = st.text_input("BigQuery table ID:", placeholder="street_trees")
+                # テンプレート選択UI
+                templates = list_templates()
+                if templates:
+                    template_col1, template_col2 = st.columns([3, 1])
+                    with template_col1:
+                        selected_template = st.selectbox(
+                            "テンプレートを選択:",
+                            ["(選択してください)"] + templates,
+                            key="template_selector"
+                        )
+                    with template_col2:
+                        st.write("")  # スペーサー
+                        if st.button("テンプレートを適用", key="apply_template"):
+                            if selected_template and selected_template != "(選択してください)":
+                                template = load_template(selected_template)
+                                if template:
+                                    # テーブルリストを設定
+                                    st.session_state[TABLES_KEY] = [
+                                        {
+                                            "project_id": t.project_id,
+                                            "dataset_id": t.dataset_id,
+                                            "table_id": t.table_id
+                                        }
+                                        for t in template.tables
+                                    ]
+                                    # システム指示を設定
+                                    st.session_state[PREAMBLE_KEY] = template.system_preamble
+                                    st.rerun()
+
+                # テーブルリストの初期化
+                if TABLES_KEY not in st.session_state:
+                    st.session_state[TABLES_KEY] = [{"project_id": "", "dataset_id": "", "table_id": ""}]
+
+                st.markdown("**BigQueryテーブル:**")
+                # 動的なテーブル入力UI
+                tables_to_remove = []
+                for i, table in enumerate(st.session_state[TABLES_KEY]):
+                    cols = st.columns([3, 3, 3, 1])
+                    with cols[0]:
+                        st.session_state[TABLES_KEY][i]["project_id"] = st.text_input(
+                            "Project ID",
+                            value=table.get("project_id", ""),
+                            key=f"bq_project_{i}",
+                            placeholder="bigquery-public-data",
+                            label_visibility="collapsed" if i > 0 else "visible"
+                        )
+                    with cols[1]:
+                        st.session_state[TABLES_KEY][i]["dataset_id"] = st.text_input(
+                            "Dataset ID",
+                            value=table.get("dataset_id", ""),
+                            key=f"bq_dataset_{i}",
+                            placeholder="san_francisco_trees",
+                            label_visibility="collapsed" if i > 0 else "visible"
+                        )
+                    with cols[2]:
+                        st.session_state[TABLES_KEY][i]["table_id"] = st.text_input(
+                            "Table ID",
+                            value=table.get("table_id", ""),
+                            key=f"bq_table_{i}",
+                            placeholder="street_trees",
+                            label_visibility="collapsed" if i > 0 else "visible"
+                        )
+                    with cols[3]:
+                        if i > 0:  # 最初の行は削除不可
+                            if st.button("🗑️", key=f"remove_table_{i}"):
+                                tables_to_remove.append(i)
+                        else:
+                            st.write("")  # スペーサー
+
+                # 削除対象のテーブルを削除
+                for idx in sorted(tables_to_remove, reverse=True):
+                    st.session_state[TABLES_KEY].pop(idx)
+                if tables_to_remove:
+                    st.rerun()
+
+                # テーブル追加ボタン
+                if st.button("➕ テーブルを追加", key="add_table"):
+                    st.session_state[TABLES_KEY].append({"project_id": "", "dataset_id": "", "table_id": ""})
+                    st.rerun()
             else:
                 looker_instance_url = st.text_input("Looker instance URL:",
                                                      placeholder="myinstance.looker.com")
@@ -153,12 +241,24 @@ def agents_main():
             datasource_references = geminidataanalytics.DatasourceReferences()
             # データソースの種類に応じてリファレンスを作成
             if data_source == BIG_QUERY:
-                # BigQueryテーブルへの参照を作成
-                bigquery_table_reference = geminidataanalytics.BigQueryTableReference()
-                bigquery_table_reference.project_id = bq_project_id
-                bigquery_table_reference.dataset_id = bq_dataset_id
-                bigquery_table_reference.table_id = bq_table_id
-                datasource_references.bq.table_references = [bigquery_table_reference]
+                # 複数BigQueryテーブルへの参照を作成
+                table_references = []
+                for table in st.session_state.get(TABLES_KEY, []):
+                    # 空のテーブルはスキップ
+                    if not table.get("project_id") or not table.get("dataset_id") or not table.get("table_id"):
+                        continue
+                    bigquery_table_reference = geminidataanalytics.BigQueryTableReference()
+                    bigquery_table_reference.project_id = table["project_id"]
+                    bigquery_table_reference.dataset_id = table["dataset_id"]
+                    bigquery_table_reference.table_id = table["table_id"]
+                    table_references.append(bigquery_table_reference)
+
+                # 有効なテーブルがない場合はエラー
+                if not table_references:
+                    st.error("少なくとも1つのBigQueryテーブルを指定してください")
+                    st.stop()
+
+                datasource_references.bq.table_references = table_references
             else:
                 # Looker Exploreへの参照を作成
                 looker_explore_reference = geminidataanalytics.LookerExploreReference()
@@ -184,6 +284,11 @@ def agents_main():
             try:
                 state.agent_client.create_data_agent(request=request)
                 st.success(f"Agent '{display_name}' successfully created")
+                # テーブルリストをクリア
+                if TABLES_KEY in st.session_state:
+                    del st.session_state[TABLES_KEY]
+                if PREAMBLE_KEY in st.session_state:
+                    del st.session_state[PREAMBLE_KEY]
                 fetch_agents_state()
             except google_exceptions.GoogleAPICallError as e:
                 st.error(f"API error creating agent: {e}")

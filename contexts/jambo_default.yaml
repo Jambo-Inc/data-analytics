@@ -1,0 +1,53 @@
+name: "Jambo Default"
+description: "デフォルトのJambo分析テンプレート"
+
+system_preamble: |
+  ## 基本ルール
+  - タイムゾーンは全てJST（Asia/Tokyo）で処理・表示すること
+  - 日付フィルタは必ずTIMESTAMP型でJSTに変換して比較すること
+
+  ## テーブル固有の制約
+  - 期間指定がない場合は「期間を指定してください」とガイド
+
+  ## 用語定義
+  - 「上位」= 降順（DESC）
+
+  ## SQL生成ルール
+  - LIMIT句は必ず付与（デフォルト1000）
+  - ORDER BYは必ず指定
+
+tables:
+  - project_id: "jambo-data-science"
+    dataset_id: "curated_prod"
+    table_id: "transaction_log"
+    description: ""
+  - project_id: "jambo-data-science"
+    dataset_id: "curated_prod"
+    table_id: "log_point"
+    description: "ポイント付与・消費ログ"
+  - project_id: "jambo-data-science"
+    dataset_id: "curated_prod"
+    table_id: "user"
+    description: "ユーザー情報"
+
+relationships:
+  - "user.user_id = log_point.user_id"
+
+#
+#example_queries:
+#  - question: "昨日最も課金したユーザー10名"
+#    sql: |
+#      SELECT user_id, SUM(net_revenue) as total
+#      FROM marts.purchase_log
+#      WHERE DATE(purchased_at, 'Asia/Tokyo') = DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL 1 DAY)
+#      GROUP BY user_id
+#      ORDER BY total DESC
+#      LIMIT 10
+#  - question: "対象ユーザーの直近7日間チャット（最大100件）"
+#    sql: |
+#      SELECT user_id, partner_id, message, sent_at
+#      FROM curated.chat_log
+#      WHERE user_id = @target_user_id
+#        AND sent_at >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)
+#      ORDER BY sent_at DESC
+#      LIMIT 100

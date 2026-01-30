@@ -12,6 +12,33 @@ AGENT_SELECT_KEY = "agent_selectbox_value"  # エージェント選択用
 CONVO_SELECT_KEY = "agent_convo_value"      # 会話選択用
 
 
+def build_guardrail_message(original_message: str, agent) -> str:
+    """
+    ユーザーメッセージにガードレール（システム指示）を付加する
+
+    引数:
+        original_message: ユーザーが入力した元のメッセージ
+        agent: 現在選択中のエージェント
+
+    戻り値:
+        ガードレール付きのメッセージ（システム指示がない場合は元のメッセージ）
+    """
+    system_instruction = ""
+    try:
+        system_instruction = agent.data_analytics_agent.published_context.system_instruction or ""
+    except AttributeError:
+        pass
+
+    if not system_instruction:
+        return original_message
+
+    return f"""【以下のルールを必ず遵守してください】
+{system_instruction}
+
+【ユーザーの質問】
+{original_message}"""
+
+
 def handle_agent_select():
     """
     エージェント選択時のコールバック
@@ -171,8 +198,9 @@ def conversations_main():
         # アシスタントのレスポンスを生成・表示
         with st.chat_message("assistant"):
             with st.spinner("Thinking... 🤖"):
-                # チャットリクエストを作成
-                user_msg = geminidataanalytics.Message(user_message={"text": user_input})
+                # チャットリクエストを作成（ガードレール付きメッセージを使用）
+                augmented_message = build_guardrail_message(user_input, state.current_agent)
+                user_msg = geminidataanalytics.Message(user_message={"text": augmented_message})
                 convo_ref = geminidataanalytics.ConversationReference()
                 convo_ref.conversation = state.current_convo.name
                 convo_ref.data_agent_context.data_agent = state.current_agent.name

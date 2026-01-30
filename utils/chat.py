@@ -6,12 +6,17 @@
 """
 import pandas as pd
 import json
+import re
 import altair as alt
+from typing import List
 
 import proto
 from google.protobuf.json_format import MessageToDict
 
 import streamlit as st
+
+# 表示行数の上限
+MAX_DISPLAY_ROWS = 20
 
 
 def handle_text_response(resp):
@@ -49,6 +54,36 @@ def format_looker_table_ref(table_ref):
 def format_bq_table_ref(table_ref):
     """BigQueryテーブルの参照情報を「project.dataset.table」形式でフォーマットする"""
     return '{}.{}.{}'.format(table_ref.project_id, table_ref.dataset_id, table_ref.table_id)
+
+
+def extract_referenced_tables(sql: str) -> List[str]:
+    """
+    SQLからFROM/JOIN句のテーブル名を抽出する
+
+    引数:
+        sql: 解析対象のSQL文字列
+
+    戻り値:
+        参照されているテーブル名のリスト（ソート済み、重複なし）
+    """
+    if not sql:
+        return []
+    tables = set()
+    # FROM句からテーブル名を抽出（バッククォート対応）
+    from_matches = re.findall(
+        r'FROM\s+`?([a-zA-Z0-9_\-]+(?:\.[a-zA-Z0-9_\-]+){0,2})`?',
+        sql,
+        re.IGNORECASE
+    )
+    tables.update(from_matches)
+    # JOIN句からテーブル名を抽出（バッククォート対応）
+    join_matches = re.findall(
+        r'JOIN\s+`?([a-zA-Z0-9_\-]+(?:\.[a-zA-Z0-9_\-]+){0,2})`?',
+        sql,
+        re.IGNORECASE
+    )
+    tables.update(join_matches)
+    return sorted(list(tables))
 
 
 def display_datasource(datasource):
@@ -103,9 +138,14 @@ def handle_data_response(resp):
         for datasource in query.datasources:
             display_datasource(datasource)
     elif 'generated_sql' in resp:
+        sql = resp.generated_sql
+        # 参照テーブルを表示
+        referenced_tables = extract_referenced_tables(sql)
+        if referenced_tables:
+            st.markdown("**参照テーブル:** " + ", ".join(f"`{t}`" for t in referenced_tables))
         # 生成されたSQLを展開可能なブロックで表示
         with st.expander("**SQL generated:**"):
-            st.code(resp.generated_sql, language="sql")
+            st.code(sql, language="sql")
     elif 'result' in resp:
         # 取得したデータをDataFrameとして表示
         st.markdown('**Data retrieved:**')
@@ -123,8 +163,27 @@ def handle_data_response(resp):
 
         # DataFrameを作成して表示
         df = pd.DataFrame(d)
+        total_rows = len(df)
 
-        st.dataframe(df)
+        # 行数が上限を超える場合は制限して表示
+        if total_rows > MAX_DISPLAY_ROWS:
+            display_df = df.head(MAX_DISPLAY_ROWS)
+            st.info(f"表示: {MAX_DISPLAY_ROWS}件 / 全{total_rows}件")
+        else:
+            display_df = df
+
+        st.dataframe(display_df)
+
+        # 行数が上限を超える場合は全データダウンロードボタンを表示
+        if total_rows > MAX_DISPLAY_ROWS:
+            csv = df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                "全データをCSVでダウンロード",
+                csv,
+                "query_result.csv",
+                "text/csv"
+            )
+
         # 後で参照できるようにセッション状態に保存
         st.session_state.lastDataFrame = df
 
