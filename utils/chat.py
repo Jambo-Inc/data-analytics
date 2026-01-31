@@ -232,16 +232,6 @@ def handle_data_response(resp):
 
         st.dataframe(display_df)
 
-        # 行数が上限を超える場合は全データダウンロードボタンを表示
-        if total_rows > MAX_DISPLAY_ROWS:
-            csv = df.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                "全データをCSVでダウンロード",
-                csv,
-                "query_result.csv",
-                "text/csv"
-            )
-
         # 後で参照できるようにセッション状態に保存
         st.session_state.lastDataFrame = df
 
