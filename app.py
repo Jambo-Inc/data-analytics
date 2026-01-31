@@ -2,6 +2,7 @@
 アプリのメインエントリーポイント
 Streamlitアプリの初期設定とページナビゲーションを管理する
 """
+import os
 import streamlit as st
 from google.cloud import geminidataanalytics
 from state import init_state, fetch_messages_state, fetch_agents_state, create_convo
@@ -68,9 +69,9 @@ def main():
     else:
         # サイドバーに新規チャットボタンと会話履歴を追加
         with st.sidebar:
-            # エージェント更新ボタン（テンプレートで再作成＋新規チャット）
+            # エージェント更新ボタン（テンプレートで再作成＋新規チャット）- ローカル開発時のみ表示
             templates = list_templates()
-            if templates:
+            if templates and os.environ.get("DEBUG"):
                 if st.button("🔄 エージェントを更新", key="rebuild_agent_btn", use_container_width=True):
                     template = load_template(templates[0])  # 最初のテンプレートを使用
                     if template:
