@@ -4,7 +4,6 @@ description: "デフォルトのJambo分析テンプレート"
 system_preamble: |
   ## 基本ルール
   - タイムゾーンは全てJST（Asia/Tokyo）で処理・表示すること
-  - 日付フィルタは必ずTIMESTAMP型でJSTに変換して比較すること
 
   ## 表示ルール
   - ユーザー情報を表示する際は必ず user_id, name, application_idを含める
@@ -20,14 +19,17 @@ system_preamble: |
   ## SQL生成ルール
   - LIMIT句は必ず付与（デフォルト1000）
   - ORDER BYは必ず指定
+  - log系テーブル（transaction_log, log_web_payment_point, log_point）は`timestamp_jst`カラムでパーティショニングされている
+    - 必ず`timestamp_jst`を使って期間を絞り込むこと（パーティションプルーニングを有効化）
+    - 例: `WHERE timestamp_jst >= '2025-01-01' AND timestamp_jst < '2025-01-02'`
+    - パーティションフィルタがないクエリは実行コストが高いため禁止
 
   ## 出力フォーマット
   - 複数ユーザーの結果を表示する際は、ユーザーごとに改行して見やすく整形する
   - 各ユーザーの情報は以下の形式で出力:
     ```
-    **user_id: xxx**
-    - 項目1: 値
-    - 項目2: 値
+    user_id: xxx
+    - 項目1: 値, 項目2: 値
     ```
   - 長いリストや集計結果はMarkdownの箇条書きやテーブル形式を使用する
   - 1行に詰め込まず、適切に改行を入れて可読性を重視する
@@ -45,6 +47,10 @@ tables:
       "アプリ内購入ログ"
       price: 課金額
       point: 付与ポイント
+      success_flag: 課金成功可否。これがtrueでないと課金として認めない
+      production_type: 
+        0: iOS
+        1: Android
   - project_id: "jambo-data-science"
     dataset_id: "curated_prod"
     table_id: "log_web_payment_point"
@@ -52,6 +58,7 @@ tables:
       "アプリ外購入ログ"
       price: 課金額
       point: 付与ポイント
+      status: 課金成功可否。これがsuccessでないと課金として認めない
   - project_id: "jambo-data-science"
     dataset_id: "curated_prod"
     table_id: "log_point"
@@ -59,7 +66,7 @@ tables:
       "ポイント獲得・消費ログテーブル"
       user_id: ポイントを獲得・消費したユーザーのuser_id
       partner_id: user_idとのやりとりによってポイントを獲得・消費したユーザーのuser_id
-      type: やりとり(partner_idあり)やアクション(partner_id)の種類
+      type: やりとり(partner_idあり)やアクション(partner_idなし)の種類
         - 1: 登録
         - 2: デイリーボーナス
         - 4: 課金（購入）
