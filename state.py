@@ -259,7 +259,7 @@ def fetch_reference_data():
             FROM `{project_id}.reference.application_name`
             ORDER BY CAST(application_id AS INT64)
         """
-        result["application_name"] = client.query(query_app).to_dataframe()
+        result["application_name"] = client.query(query_app).to_dataframe(create_bqstorage_client=False)
     except Exception as e:
         st.error(f"application_name取得エラー: {e}")
         result["application_name"] = None
@@ -271,7 +271,7 @@ def fetch_reference_data():
             FROM `{project_id}.reference.log_point_type`
             ORDER BY CAST(type AS INT64)
         """
-        result["log_point_type"] = client.query(query_type).to_dataframe()
+        result["log_point_type"] = client.query(query_type).to_dataframe(create_bqstorage_client=False)
     except Exception as e:
         st.error(f"log_point_type取得エラー: {e}")
         result["log_point_type"] = None
