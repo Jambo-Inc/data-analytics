@@ -5,6 +5,7 @@ st.session_stateを使用してAPIクライアント、エージェント、会�
 import uuid
 import streamlit as st
 from google.cloud import geminidataanalytics
+from google.cloud import bigquery
 from google.api_core import exceptions as google_exceptions
 from utils.templates import load_template
 
@@ -233,3 +234,46 @@ def create_convo(agent=None):
         st.error(f"API error creating convo: {e}")
     except Exception as e:
         st.error(f"Unexpected error: {e}")
+
+
+@st.cache_data(ttl=3600)
+def fetch_reference_data():
+    """
+    referenceデータセットのマスタテーブルを取得する（1時間キャッシュ）
+
+    戻り値:
+        dict: {
+            "application_name": DataFrame（アプリID→名前のマッピング）,
+            "log_point_type": DataFrame（アクション種別のマスタ）
+        }
+    """
+    project_id = st.secrets.cloud.project_id
+    client = bigquery.Client(project=project_id)
+
+    result = {}
+
+    # application_nameテーブルを取得
+    try:
+        query_app = f"""
+            SELECT application_id, application_name
+            FROM `{project_id}.reference.application_name`
+            ORDER BY CAST(application_id AS INT64)
+        """
+        result["application_name"] = client.query(query_app).to_dataframe()
+    except Exception as e:
+        st.error(f"application_name取得エラー: {e}")
+        result["application_name"] = None
+
+    # log_point_typeテーブルを取得
+    try:
+        query_type = f"""
+            SELECT type, action_name
+            FROM `{project_id}.reference.log_point_type`
+            ORDER BY CAST(type AS INT64)
+        """
+        result["log_point_type"] = client.query(query_type).to_dataframe()
+    except Exception as e:
+        st.error(f"log_point_type取得エラー: {e}")
+        result["log_point_type"] = None
+
+    return result

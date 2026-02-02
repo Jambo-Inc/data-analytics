@@ -5,7 +5,7 @@ Streamlitアプリの初期設定とページナビゲーションを管理す�
 import os
 import streamlit as st
 from google.cloud import geminidataanalytics
-from state import init_state, fetch_messages_state, fetch_agents_state, create_convo
+from state import init_state, fetch_messages_state, fetch_agents_state, create_convo, fetch_reference_data
 from utils.templates import list_templates, load_template
 
 
@@ -158,6 +158,30 @@ def main():
                         st.session_state.convo_messages = []
                         fetch_messages_state(convo, rerun=False)
                         st.rerun()
+
+            # 参照データ（referenceテーブル）
+            st.markdown('<p class="chat-history-label">参照データ</p>', unsafe_allow_html=True)
+            ref_data = fetch_reference_data()
+
+            with st.expander("📱 アプリ名マスタ"):
+                if ref_data["application_name"] is not None:
+                    st.dataframe(
+                        ref_data["application_name"],
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+                else:
+                    st.warning("データを取得できませんでした")
+
+            with st.expander("🏷️ アクション種別マスタ"):
+                if ref_data["log_point_type"] is not None:
+                    st.dataframe(
+                        ref_data["log_point_type"],
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+                else:
+                    st.warning("データを取得できませんでした")
 
         # チャットページを直接実行（ナビゲーションなし）
         import app_pages.chat as chat_module
