@@ -13,7 +13,7 @@ def main():
     """
     アプリのメイン関数
     - ページ設定（タイトル、アイコン、レイアウト）を行う
-    - サイドバーにアプリ名「探索くん」を表示する
+    - サイドバーにアプリ名「JamboGPT」を表示する
     - 初回起動時は状態を初期化し、以降はページナビゲーションを表示する
     """
     st.set_page_config(
@@ -58,7 +58,7 @@ def main():
         """
         <div class="app-title">
             <span class="icon">📊</span>
-            <h1>探索くん</h1>
+            <h1>JamboGPT</h1>
             <p>Data Analytics Assistant</p>
             <hr>
         </div>

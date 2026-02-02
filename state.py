@@ -12,7 +12,7 @@ from utils.templates import load_template
 # 固定エージェント用のテンプレートファイル名
 DEFAULT_TEMPLATE = "jambo_default.yaml"
 # 固定エージェントの表示名
-DEFAULT_AGENT_NAME = "探索くん"
+DEFAULT_AGENT_NAME = "JamboGPT"
 
 def init_state():
     """

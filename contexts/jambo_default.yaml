@@ -42,12 +42,10 @@ system_preamble: |
     - 課金額はtotal_pointの正の値（total_point > 0）で表される
     - 課金上位 = total_pointが大きい順（DESC）
 
-  ## 出力フォーマット
-  - 複数ユーザーの結果を表示する際は、ユーザーごとに改行して見やすく整形する
-
   ## 表示ルール
   - ユーザー情報を表示する際は必ず user_id, name, application_nameを含める
     - もし、application_idの変換後の値が設定されていない場合は、そのままapplication_idを返す
+  - 複数ユーザーの結果を表示する際は、ユーザーごとに改行して見やすく整形する
 
   ## カラム型に関する注意
   - `timestamp_jst`カラムはDATETIME型である（TIMESTAMPではない）
