@@ -94,9 +94,12 @@ def agents_main():
                             request = geminidataanalytics.UpdateDataAgentRequest(data_agent=agent, update_mask="*")
 
                             try:
-                                state.agent_client.update_data_agent(request=request).result()
+                                print("更新リクエストを送信中...")
+                                operation = state.agent_client.update_data_agent(request=request)
+                                print(f"Operation開始: {operation.operation.name}")
+                                # .result()は呼ばない（Long-running Operationの完了を待たない）
                                 fetch_agents_state()
-                                st.success("Succesfully updated data agent")
+                                st.success("更新リクエストを送信しました（反映まで少し時間がかかる場合があります）")
                             except Exception as e:
                                 st.error(f"Error updating data agent: {e}")
 
@@ -106,7 +109,9 @@ def agents_main():
                                 name=ag.name
                             )
                             try:
-                                operation = state.agent_client.delete_data_agent(request=request).result()
+                                print("削除リクエストを送信中...")
+                                operation = state.agent_client.delete_data_agent(request=request)
+                                print(f"Delete operation: {operation.operation.name}")
                                 fetch_agents_state()
                                 st.rerun()
                             except Exception as e:

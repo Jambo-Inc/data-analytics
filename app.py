@@ -54,7 +54,7 @@ def main():
         """
         <div class="app-title">
             <span class="icon">📊</span>
-            <h1>分析くん(仮)</h1>
+            <h1>探索くん</h1>
             <p>Data Analytics Assistant</p>
             <hr>
         </div>
@@ -79,7 +79,7 @@ def main():
                             # 古いエージェントを削除
                             for ag in st.session_state.get("agents", []):
                                 delete_req = geminidataanalytics.DeleteDataAgentRequest(name=ag.name)
-                                st.session_state.agent_client.delete_data_agent(request=delete_req).result()
+                                operation = st.session_state.agent_client.delete_data_agent(request=delete_req)
 
                             # 新しいエージェントを作成
                             import uuid
