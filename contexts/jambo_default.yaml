@@ -5,9 +5,10 @@ system_preamble: |
   ## 基本ルール
   - タイムゾーンは全てJST（Asia/Tokyo）で処理・表示すること
 
-  ## テーブル固有の制約
-  - 期間指定がない場合は「期間を指定してください」とガイド。それでも指定がなければ「昨日分」を取得する。
-    - 「昨日」は前日1日分
+  ## 期間と件数の制約（必須）
+  - 期間指定がない場合: デフォルトで「昨日」（前日1日分）を使用
+  - 件数指定がない場合: デフォルトで「20件」を使用（LIMIT 20）
+  - 必ず LIMIT を付けること。ユーザーが「全件」と明示した場合のみ LIMIT なしを許可
 
   ## 用語定義
   - 「上位」= 降順（DESC）
@@ -20,7 +21,14 @@ system_preamble: |
     - パーティションフィルタがないクエリは実行コストが高いため禁止
 
   ## ポイント集計ルール（log_point_daily_view）
-  - アプリ名で絞り込む場合: `LOWER(partner_app_name) LIKE LOWER(REPLACE('アプリ名%', '-', '_'))` を使用
+  - アプリ名（user_app, partner_app）で絞り込む場合:
+    - `LOWER(user_app) LIKE LOWER(REPLACE('%アプリ名%', '-', '_'))`
+    - `LOWER(partner_app) LIKE LOWER(REPLACE('%アプリ名%', '-', '_'))`
+    - 例: Connectで絞り込む → `LOWER(user_app) LIKE LOWER(REPLACE('%connect%', '-', '_'))`
+  - アクション名（action_name）で絞り込む場合:
+    - action_nameは日本語で格納されている。ユーザーの質問をそのまま使う
+    - 例: 「ビデオ通話」→ `action_name LIKE '%ビデオ通話%'`
+    - 絶対に英語に変換しないこと
   - ポイント（total_point）の集計時:
     - 17(管理変更ポイント), 340(ロールバックポイント)は必ず除外すること
     - 獲得ポイント（正の値）を集計する場合: typeが以下の場合は除外
@@ -51,19 +59,45 @@ tables:
     dataset_id: "marts_prod"
     table_id: "log_point_daily_view"
     description: |
-      ユーザーポイントログ情報
-      ## スキーマ情報
-      - date: DATE
+      ユーザーポイントログ情報（日次集計）
+
+      ## カラム一覧（これ以外のカラムは存在しない）
+      - date: DATE（日付）
       - user_id: STRING
-      - user_app_name: STRING（例: "Jambo_iOS", "Jambo_Android"）
-        - アプリ名で絞り込む場合は LOWER(user_app_name) LIKE LOWER(REPLACE('アプリ名%', '-', '_')) を使用すること
+      - user_gender: INTEGER（0=男性, 1=女性）
+      - user_name: STRING
+      - user_application_id: INTEGER（アプリID。名前を知りたい場合はreference.application_nameを参照）
+      - user_cm_code: STRING
+      - user_reg_date: STRING
       - partner_id: STRING(NULLABLE)
-      - partner_app_name: STRING（例: "Jambo_iOS", "Jambo_Android"）
-        - アプリ名で絞り込む場合は LOWER(partner_app_name) LIKE LOWER(REPLACE('アプリ名%', '-', '_')) を使用すること
-      - point: total_point
-        - 正 : 獲得ポイント
-        - 負 : 消費ポイント
-      ## カラム変換ルール
-      ### user_gender, partner_gender
-       - 0 : 男性
-       - 1 : 女性
+      - partner_gender: INTEGER（0=男性, 1=女性）
+      - partner_name: STRING
+      - partner_application_id: INTEGER
+      - partner_cm_code: STRING
+      - partner_reg_date: STRING
+      - action_type: INTEGER（アクション種別ID。名前はreference.log_point_typeを参照）
+      - total_point: INTEGER（正=獲得, 負=消費）
+      - interaction_count: INTEGER（やりとり回数）
+      - user_app: STRING（ユーザーのアプリ名。例: "Jambo_iOS", "Connect_Android"）
+      - partner_app: STRING（相手のアプリ名）
+      - action_name: STRING（アクション名。日本語で格納。例: "ビデオ通話", "メッセージ送信"）
+
+      ## 重要: カラム名を間違えないこと
+      - user_app_name ではなく user_app
+      - partner_app_name ではなく partner_app
+
+  - project_id: "jambo-data-science"
+    dataset_id: "reference"
+    table_id: "application_name"
+    description: |
+      アプリケーションIDと名前のマスタ
+      - application_id: INTEGER
+      - application_name: STRING（例: "Chapple", "Millefeuille_iOS", "Aqua_iOS", "Connect_Android"）
+
+  - project_id: "jambo-data-science"
+    dataset_id: "reference"
+    table_id: "log_point_type"
+    description: |
+      ポイントアクション種別のマスタ
+      - type: INTEGER（= log_point_daily_view.action_type）
+      - action_name: STRING（日本語。例: "ビデオ通話", "メッセージ送信", "Amazon支払い"）

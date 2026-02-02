@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## プロジェクト概要
 
-Google Conversational Analytics API向けのStreamlitベースのクイックスタートアプリ（分析くん）。データエージェントを通じてBigQueryやLookerのデータソースに自然言語でクエリを実行できる。
+Google Conversational Analytics API向けのStreamlitベースのクイックスタートアプリ（探索くん）。データエージェントを通じてBigQueryやLookerのデータソースに自然言語でクエリを実行できる。
 
 ## 開発コマンド
 
