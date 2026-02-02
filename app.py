@@ -46,6 +46,10 @@ def main():
                 text-transform: uppercase;
                 letter-spacing: 0.05em;
             }
+            /* サイドバー下部にスペースを追加 */
+            [data-testid="stSidebar"] > div:first-child {
+                padding-bottom: 300px;
+            }
         </style>
         """,
         unsafe_allow_html=True
